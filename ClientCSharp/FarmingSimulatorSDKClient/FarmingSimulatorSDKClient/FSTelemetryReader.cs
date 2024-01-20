@@ -5,10 +5,15 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Net.Sockets;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Timers;
+using System;
+using System.Net;
+using System.Net.Sockets;
 
 namespace FarmingSimulatorSDKClient
 {
@@ -20,7 +25,10 @@ namespace FarmingSimulatorSDKClient
         private Dictionary<string, PropertyInfo> telemetryProperties;
         private Dictionary<short, PropertyInfo> telemetryIndexes;
         private bool active;
-        public event OnTelemetryRead OnTelemetryRead;        
+        public event OnTelemetryRead OnTelemetryRead;
+        private Socket socket;
+        private IPAddress broadcast;
+        private IPEndPoint remote_address;
 
         public FSTelemetryReader()
         {
@@ -37,11 +45,22 @@ namespace FarmingSimulatorSDKClient
                 ProcessTelemetryIndexes(e.Message);
             else
                 ProcessTelemetry(e.Message);
+
+            byte[] sendbuf = Encoding.ASCII.GetBytes(e.Message);
+
+            socket.SendTo(sendbuf, remote_address);
+
+            Console.WriteLine("Message sent to the broadcast address");
         }
 
         public void Start() {
             pipeServer.Start();
             active = true;
+            socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            broadcast = IPAddress.Parse("192.168.0.141");
+            remote_address = new IPEndPoint(broadcast, 20777);
+
+
         }
 
         public void Stop() {
